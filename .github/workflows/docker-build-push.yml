@@ -70,13 +70,13 @@ jobs:
           tags: ${{ env.REGISTRY }}/${{ github.repository }}/movies-service:latest
           platforms: linux/amd64
 
-      # Start services with docker-compose (includes api-tests)
+      # Start services (includes api-tests)
       - name: Start services with docker-compose
         run: |
           docker compose -f docker-compose.yml up -d --build
           sleep 30
           docker ps -a
 
-      # Run API tests inside docker-compose (api-tests service)
+      # Run API tests (via api-tests service)
       - name: Run API tests
         run: docker compose -f docker-compose.yml run --rm api-tests

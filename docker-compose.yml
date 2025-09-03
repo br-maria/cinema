@@ -61,12 +61,6 @@ services:
     depends_on:
       - monolith
       - movies-service
-    build:
-      context: ./src/microservices/proxy
-      dockerfile: Dockerfile
-      platforms:
-        - linux/amd64
-    platform: linux/amd64
     ports:
       - "8000:8000"
     environment:
@@ -77,16 +71,16 @@ services:
       MOVIES_MIGRATION_PERCENT: "50"
     networks:
       - cinemaabyss-network
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8000/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
+  # Events Service (Java + Kafka)
   events-service:
     image: ghcr.io/br-maria/cinema/events-service:latest
     container_name: cinemaabyss-events-service
-    build:
-      context: ./src/microservices/events
-      dockerfile: Dockerfile
-      platforms:
-        - linux/amd64
-    platform: linux/amd64
     ports:
       - "8082:8082"
     environment:
@@ -94,7 +88,11 @@ services:
       KAFKA_BROKER: kafka:9092
     networks:
       - cinemaabyss-network
-
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8082/api/events/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   # Zookeeper
   zookeeper:

@@ -40,7 +40,7 @@ jobs:
         with:
           context: ./src/microservices/proxy
           push: true
-          tags: ${{ env.REGISTRY }}/proxy-service:latest
+          tags: ${{ env.REGISTRY }}/${{ github.repository }}/proxy-service:latest
           platforms: linux/amd64
 
       # Build & Push events-service
@@ -49,34 +49,24 @@ jobs:
         with:
           context: ./src/microservices/events
           push: true
-          tags: ${{ env.REGISTRY }}/events-service:latest
+          tags: ${{ env.REGISTRY }}/${{ github.repository }}/events-service:latest
           platforms: linux/amd64
 
       # Поднятие сервисов для тестов
       - name: Start services with docker-compose
         run: |
-          docker-compose -f docker-compose.yml up -d
-          sleep 20
+          docker compose -f docker-compose.yml up -d --build
+          sleep 30
           docker ps -a
 
-      # Установка newman
-      - name: Install Newman
-        run: npm install -g newman
-
-      # Запуск Postman коллекции
-      - name: Run API tests
-        run: |
-          newman run tests/postman/CinemaAbyss.postman_collection.json \
-            --environment tests/postman/local.environment.json \
-            --reporters cli
-            - name: Build and run services
-        run: |
-          docker compose -f docker-compose.yml up -d --build
-          sleep 30   # даём время сервисам и БД подняться
-
-      - name: Run API tests
+      # Установка зависимостей для тестов
+      - name: Install dependencies for tests
         run: |
           cd tests/postman
           npm install
-          ./run-tests.sh
 
+      # Запуск Postman коллекции через скрипт
+      - name: Run API tests
+        run: |
+          cd tests/postman
+          ./run-tests.sh

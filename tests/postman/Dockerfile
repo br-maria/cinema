@@ -6,7 +6,6 @@ COPY package*.json ./
 RUN npm install
 
 COPY . .
+RUN chmod +x tests/postman/run-tests.sh
+ENTRYPOINT ["tests/postman/run-tests.sh"]
 
-RUN chmod +x run-tests.sh
-
-ENTRYPOINT ["./run-tests.sh"]

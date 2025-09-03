@@ -56,13 +56,17 @@ services:
 
   # Proxy Service (Java)
   proxy-service:
-    build:
-      context: ./src/microservices/proxy
-      dockerfile: Dockerfile
+    image: ghcr.io/br-maria/cinema/proxy-service:latest
     container_name: cinemaabyss-proxy-service
     depends_on:
       - monolith
       - movies-service
+    build:
+      context: ./src/microservices/proxy
+      dockerfile: Dockerfile
+      platforms:
+        - linux/amd64
+    platform: linux/amd64
     ports:
       - "8000:8000"
     environment:
@@ -74,18 +78,20 @@ services:
     networks:
       - cinemaabyss-network
 
-  # Events Service (заглушка)
   events-service:
+    image: ghcr.io/br-maria/cinema/events-service:latest
+    container_name: cinemaabyss-events-service
     build:
       context: ./src/microservices/events
       dockerfile: Dockerfile
-    container_name: cinemaabyss-events-service
-    depends_on:
-      - kafka
-    environment:
-      - SPRING_KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+      platforms:
+        - linux/amd64
+    platform: linux/amd64
     ports:
       - "8082:8082"
+    environment:
+      PORT: 8082
+      KAFKA_BROKER: kafka:9092
     networks:
       - cinemaabyss-network
 

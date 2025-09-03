@@ -2,10 +2,15 @@ FROM node:18-alpine
 
 WORKDIR /app
 
-COPY package*.json ./
+# Копируем package.json и package-lock.json
+COPY tests/postman/package*.json ./
 RUN npm install
 
-COPY . .
-RUN chmod +x tests/postman/run-tests.sh
-ENTRYPOINT ["tests/postman/run-tests.sh"]
+# Копируем весь код из tests/postman
+COPY tests/postman .
 
+# Делаем скрипт исполняемым
+RUN chmod +x run-tests.sh
+
+# Запускаем его
+ENTRYPOINT ["./run-tests.sh"]

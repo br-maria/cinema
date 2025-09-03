@@ -5,6 +5,7 @@ on:
     branches: [ main ]
     paths:
       - 'src/**'
+      - 'docker-compose.yml'
       - '.github/workflows/docker-build-push.yml'
   release:
     types: [published]
@@ -28,55 +29,61 @@ jobs:
         uses: docker/setup-buildx-action@v2
 
       - name: Log in to GitHub Container Registry
-        uses: docker/login-action@v2
+        uses: docker/login-action@v3
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      # Build & Push proxy-service
-      - name: Build and push proxy-service
-        uses: docker/build-push-action@v4
-        with:
-          context: ./src/microservices/proxy
-          push: true
-          tags: ${{ env.REGISTRY }}/${{ github.repository }}/proxy-service:latest
-          platforms: linux/amd64
-
-      # Build & Push events-service
-      - name: Build and push events-service
-        uses: docker/build-push-action@v4
-        with:
-          context: ./src/microservices/events
-          push: true
-          tags: ${{ env.REGISTRY }}/${{ github.repository }}/events-service:latest
-          platforms: linux/amd64
-
-      # Build & Push monolith-service
-      - name: Build and push monolith-service
-        uses: docker/build-push-action@v4
-        with:
-          context: ./src/monolith
-          push: true
-          tags: ${{ env.REGISTRY }}/${{ github.repository }}/monolith-service:latest
-          platforms: linux/amd64
-
-      # Build & Push movies-service
-      - name: Build and push movies-service
-        uses: docker/build-push-action@v4
-        with:
-          context: ./src/microservices/movies
-          push: true
-          tags: ${{ env.REGISTRY }}/${{ github.repository }}/movies-service:latest
-          platforms: linux/amd64
-
-      # Start services (includes api-tests)
-      - name: Start services with docker-compose
+      # Сборка и пуш (для артефактов/деплоя) — не влияет на тесты
+      - name: Build & push images
         run: |
-          docker compose -f docker-compose.yml up -d --build
-          sleep 30
+          docker build -t ${{ env.REGISTRY }}/${{ github.repository }}/monolith-service:latest ./src/monolith
+          docker build -t ${{ env.REGISTRY }}/${{ github.repository }}/movies-service:latest ./src/microservices/movies
+          docker build -t ${{ env.REGISTRY }}/${{ github.repository }}/events-service:latest ./src/microservices/events
+          docker build -t ${{ env.REGISTRY }}/${{ github.repository }}/proxy-service:latest ./src/microservices/proxy
+          docker push ${{ env.REGISTRY }}/${{ github.repository }}/monolith-service:latest
+          docker push ${{ env.REGISTRY }}/${{ github.repository }}/movies-service:latest
+          docker push ${{ env.REGISTRY }}/${{ github.repository }}/events-service:latest
+          docker push ${{ env.REGISTRY }}/${{ github.repository }}/proxy-service:latest
+
+      # Поднимаем локально собранные сервисы (compose сам соберёт из ./src/**)
+      - name: Docker compose up
+        run: |
+          docker compose up -d --build
+          echo "⏳ Waiting ports 8080,8081,8082,8000..."
+          for p in 8080 8081 8082 8000; do
+            for i in {1..60}; do
+              (echo > /dev/tcp/127.0.0.1/$p) >/dev/null 2>&1 && break
+              sleep 2
+            done
+          done
           docker ps -a
 
-      # Run API tests (via api-tests service)
-      - name: Run API tests
-        run: docker compose -f docker-compose.yml run --rm api-tests
+      # Node для запуска newman на ХОСТЕ (это важно, т.к. в тестах 127.0.0.1)
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+
+      - name: Install test deps
+        working-directory: tests/postman
+        run: npm ci || npm install
+
+      - name: Ensure script is executable
+        run: chmod +x tests/postman/run-tests.sh
+
+      - name: Run API tests (host)
+        working-directory: tests/postman
+        run: ./run-tests.sh
+
+      # Логи на случай фейла — чтобы быстро дебажить
+      - name: Dump docker logs on failure
+        if: failure()
+        run: |
+          docker compose ps
+          docker compose logs --no-color --tail=200
+
+      - name: Docker compose down
+        if: always()
+        run: docker compose down -v

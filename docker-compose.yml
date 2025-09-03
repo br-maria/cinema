@@ -8,9 +8,12 @@ services:
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 5s
+      timeout: 5s
       retries: 10
     ports:
       - "5432:5432"
+    networks:
+      - cinemaabyss-network
 
   zookeeper:
     image: confluentinc/cp-zookeeper:7.5.0
@@ -18,17 +21,23 @@ services:
       ZOOKEEPER_CLIENT_PORT: 2181
     ports:
       - "2181:2181"
+    networks:
+      - cinemaabyss-network
 
   kafka:
     image: confluentinc/cp-kafka:7.5.0
     depends_on:
       - zookeeper
     environment:
+      KAFKA_BROKER_ID: 1
       KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_LISTENERS: PLAINTEXT://:9092
       KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
     ports:
       - "9092:9092"
+    networks:
+      - cinemaabyss-network
 
   kafka-ui:
     image: provectuslabs/kafka-ui:latest
@@ -38,45 +47,72 @@ services:
       KAFKA_CLUSTERS_0_NAME: local
       KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:9092
     ports:
-      - "8080:8080"
+      - "8085:8080"
+    networks:
+      - cinemaabyss-network
 
   monolith:
-    image: ghcr.io/br-maria/cinema/monolith-service:latest
+    build:
+      context: ./src/monolith
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "8080:8080"
+    networks:
+      - cinemaabyss-network
+
+  movies-service:
+    build:
+      context: ./src/microservices/movies
     depends_on:
       postgres:
         condition: service_healthy
     ports:
       - "8081:8081"
-
-  movies-service:
-    image: ghcr.io/br-maria/cinema/movies-service:latest
-    depends_on:
-      postgres:
-        condition: service_healthy
-    ports:
-      - "8082:8082"
+    networks:
+      - cinemaabyss-network
 
   events-service:
-    image: ghcr.io/br-maria/cinema/events-service:latest
+    build:
+      context: ./src/microservices/events
     depends_on:
       kafka:
         condition: service_started
     ports:
-      - "8083:8083"
+      - "8082:8082"
+    networks:
+      - cinemaabyss-network
 
   proxy-service:
-    image: ghcr.io/br-maria/cinema/proxy-service:latest
+    build:
+      context: ./src/microservices/proxy
     depends_on:
       - monolith
       - movies-service
       - events-service
     ports:
-      - "8084:8084"
+      - "8000:8000"
+    networks:
+      - cinemaabyss-network
 
+  # Оставляем для локального запуска тестов через compose (в CI тесты идут на хосте)
   api-tests:
     build:
       context: ./tests/postman
       dockerfile: Dockerfile
     depends_on:
-      - proxy-service
-    command: ["./run-tests.sh"]
+      monolith:
+        condition: service_started
+      movies-service:
+        condition: service_started
+      events-service:
+        condition: service_started
+      proxy-service:
+        condition: service_started
+    networks:
+      - cinemaabyss-network
+
+networks:
+  cinemaabyss-network:
+    driver: bridge

@@ -69,3 +69,14 @@ jobs:
           newman run tests/postman/CinemaAbyss.postman_collection.json \
             --environment tests/postman/local.environment.json \
             --reporters cli
+            - name: Build and run services
+        run: |
+          docker compose -f docker-compose.yml up -d --build
+          sleep 30   # даём время сервисам и БД подняться
+
+      - name: Run API tests
+        run: |
+          cd tests/postman
+          npm install
+          ./run-tests.sh
+

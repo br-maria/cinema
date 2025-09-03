@@ -39,20 +39,18 @@ jobs:
         uses: docker/build-push-action@v4
         with:
           context: ./src/microservices/proxy
-          file: ./src/microservices/proxy/Dockerfile
           push: true
-          tags: |
-            ${{ env.REGISTRY }}/${{ env.IMAGE_NAMESPACE }}/proxy-service:latest
+          tags: ${{ env.REGISTRY }}/proxy-service:latest
+          platforms: linux/amd64
 
       # Build & Push events-service
       - name: Build and push events-service
         uses: docker/build-push-action@v4
         with:
           context: ./src/microservices/events
-          file: ./src/microservices/events/Dockerfile
           push: true
-          tags: |
-            ${{ env.REGISTRY }}/${{ env.IMAGE_NAMESPACE }}/events-service:latest
+          tags: ${{ env.REGISTRY }}/events-service:latest
+          platforms: linux/amd64
 
       # Поднятие сервисов для тестов
       - name: Start services with docker-compose

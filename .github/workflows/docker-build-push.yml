@@ -45,7 +45,7 @@ jobs:
           docker save movies-service:local -o movies-service.tar
 
       - name: Upload images
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: docker-images
           path: |
@@ -62,7 +62,7 @@ jobs:
         uses: actions/checkout@v3
 
       - name: Download images
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: docker-images
 

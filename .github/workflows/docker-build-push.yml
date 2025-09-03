@@ -1,11 +1,10 @@
-name: Docker Build, Test and Push
+name: Docker Build, Push and Test
 
 on:
   push:
     branches: [ main ]
     paths:
       - 'src/**'
-      - 'docker-compose.yml'
       - '.github/workflows/docker-build-push.yml'
   release:
     types: [published]
@@ -15,103 +14,15 @@ env:
   IMAGE_NAMESPACE: ${{ github.repository }}
 
 jobs:
-  build:
+  build-and-test:
     runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v3
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v2
-
-      # Собираем образы локально (без пуша)
-      - name: Build proxy-service image
-        run: docker build -t proxy-service:local ./src/microservices/proxy
-
-      - name: Build events-service image
-        run: docker build -t events-service:local ./src/microservices/events
-
-      - name: Build monolith-service image
-        run: docker build -t monolith-service:local ./src/monolith
-
-      - name: Build movies-service image
-        run: docker build -t movies-service:local ./src/microservices/movies
-
-      - name: Save images as artifacts
-        run: |
-          docker save proxy-service:local -o proxy-service.tar
-          docker save events-service:local -o events-service.tar
-          docker save monolith-service:local -o monolith-service.tar
-          docker save movies-service:local -o movies-service.tar
-
-      - name: Upload images
-        uses: actions/upload-artifact@v4
-        with:
-          name: docker-images
-          path: |
-            proxy-service.tar
-            events-service.tar
-            monolith-service.tar
-            movies-service.tar
-
-  test:
-    runs-on: ubuntu-latest
-    needs: build
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v3
-
-      - name: Download images
-        uses: actions/download-artifact@v4
-        with:
-          name: docker-images
-
-      - name: Load Docker images
-        run: |
-          docker load -i proxy-service.tar
-          docker load -i events-service.tar
-          docker load -i monolith-service.tar
-          docker load -i movies-service.tar
-
-      # ✅ Создаём сеть заранее
-      - name: Ensure docker network exists
-        run: |
-          docker network inspect cinemaabyss-network >/dev/null 2>&1 || docker network create cinemaabyss-network
-          docker network ls
-
-      # Запускаем сервисы из docker-compose.yml
-      - name: Start services with docker-compose
-        run: |
-          docker compose -f docker-compose.yml up -d --build
-          sleep 30
-          docker ps -a
-          docker network inspect cinemaabyss-network
-
-      - name: Install dependencies for tests
-        run: |
-          cd tests/postman
-          npm install
-
-      - name: Run API tests
-        run: |
-          cd tests/postman
-          ./run-tests.sh
-
-      # Чистим окружение после тестов
-      - name: Cleanup
-        if: always()
-        run: |
-          docker compose -f docker-compose.yml down -v
-
-  push:
-    runs-on: ubuntu-latest
-    needs: [build, test]
     permissions:
       contents: read
       packages: write
+
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
@@ -123,7 +34,7 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      # Финальная сборка + пуш (уже в GHCR)
+      # Build & Push proxy-service
       - name: Build and push proxy-service
         uses: docker/build-push-action@v4
         with:
@@ -132,6 +43,7 @@ jobs:
           tags: ${{ env.REGISTRY }}/${{ github.repository }}/proxy-service:latest
           platforms: linux/amd64
 
+      # Build & Push events-service
       - name: Build and push events-service
         uses: docker/build-push-action@v4
         with:
@@ -140,6 +52,7 @@ jobs:
           tags: ${{ env.REGISTRY }}/${{ github.repository }}/events-service:latest
           platforms: linux/amd64
 
+      # Build & Push monolith-service
       - name: Build and push monolith-service
         uses: docker/build-push-action@v4
         with:
@@ -148,6 +61,7 @@ jobs:
           tags: ${{ env.REGISTRY }}/${{ github.repository }}/monolith-service:latest
           platforms: linux/amd64
 
+      # Build & Push movies-service
       - name: Build and push movies-service
         uses: docker/build-push-action@v4
         with:
@@ -155,3 +69,14 @@ jobs:
           push: true
           tags: ${{ env.REGISTRY }}/${{ github.repository }}/movies-service:latest
           platforms: linux/amd64
+
+      # Start services with docker-compose (includes api-tests)
+      - name: Start services with docker-compose
+        run: |
+          docker compose -f docker-compose.yml up -d --build
+          sleep 30
+          docker ps -a
+
+      # Run API tests inside docker-compose (api-tests service)
+      - name: Run API tests
+        run: docker compose -f docker-compose.yml run --rm api-tests

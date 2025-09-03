@@ -1,0 +1,143 @@
+diff --git a/.github/workflows/api-tests.yml b/.github/workflows/api-tests.yml
+index 46e0f4d..e1e6b3f 100644
+--- a/.github/workflows/api-tests.yml
++++ b/.github/workflows/api-tests.yml
+@@ -20,14 +20,35 @@ jobs:
+     steps:
+       - name: Checkout code
+-        uses: actions/checkout@v2
++        uses: actions/checkout@v4
+ 
+-      - name: Start services
+-        run: docker compose up -d --build
+-
+-      - name: Sleep for 120 seconds to allow services to start
+-        run: sleep 120
++      - name: Start services
++        run: docker compose up -d --build
++
++      - name: Wait for services to be healthy
++        run: |
++          sudo apt-get update && sudo apt-get install -y jq
++          timeout 5m bash -c '
++            until [ "$(docker compose ps --format json | jq -r "[.[].Health] | all(.==\"healthy\")")" = "true" ]; do
++              echo "Waiting for services to be healthy..."
++              docker compose ps
++              sleep 5
++            done
++          '
++        shell: bash
+ 
+       - name: Set up Node.js
+-        uses: actions/setup-node@v2
++        uses: actions/setup-node@v4
+         with:
+-          node-version: '14'
+-          cache: 'npm'
+-          cache-dependency-path: tests/postman/package-lock.json
++          node-version: '18'
++          cache: 'npm'
++          cache-dependency-path: tests/postman/package-lock.json
+@@ -50,7 +71,7 @@ jobs:
+       - name: Run API tests in Docker
+         working-directory: tests/postman
+         run: |
+-          docker compose up -d
+-          sleep 60
+-          docker run --rm --network=cinemaabyss-network -v "$(pwd)/reports:/app/reports" cinemaabyss-api-tests
++          docker run --rm --network=cinemaabyss-network \
++            -v "$(pwd)/reports:/app/reports" \
++            cinemaabyss-api-tests
++
+diff --git a/.github/workflows/docker-build-push.yml b/.github/workflows/docker-build-push.yml
+index 3d8ab77..23e2b10 100644
+--- a/.github/workflows/docker-build-push.yml
++++ b/.github/workflows/docker-build-push.yml
+@@ -16,10 +16,63 @@ jobs:
+     steps:
+       - name: Checkout repository
+-        uses: actions/checkout@v2
++        uses: actions/checkout@v4
++
++      - name: Set up Docker Buildx
++        uses: docker/setup-buildx-action@v3
++
++      - name: Log in to GHCR
++        uses: docker/login-action@v3
++        with:
++          registry: ghcr.io
++          username: ${{ github.actor }}
++          password: ${{ secrets.GITHUB_TOKEN }}
++
++      - name: Build & Push proxy-service
++        uses: docker/build-push-action@v6
++        with:
++          context: ./src/microservices/proxy
++          push: true
++          tags: |
++            ghcr.io/${{ github.repository }}/proxy-service:sha-${{ github.sha }}
++            ghcr.io/${{ github.repository }}/proxy-service:latest
++
++      - name: Build & Push events-service
++        uses: docker/build-push-action@v6
++        with:
++          context: ./src/microservices/events
++          push: true
++          tags: |
++            ghcr.io/${{ github.repository }}/events-service:sha-${{ github.sha }}
++            ghcr.io/${{ github.repository }}/events-service:latest
++
++      - name: Build & Push monolith-service
++        uses: docker/build-push-action@v6
++        with:
++          context: ./src/monolith
++          push: true
++          tags: |
++            ghcr.io/${{ github.repository }}/monolith-service:sha-${{ github.sha }}
++            ghcr.io/${{ github.repository }}/monolith-service:latest
++
++      - name: Build & Push movies-service
++        uses: docker/build-push-action@v6
++        with:
++          context: ./src/microservices/movies
++          push: true
++          tags: |
++            ghcr.io/${{ github.repository }}/movies-service:sha-${{ github.sha }}
++            ghcr.io/${{ github.repository }}/movies-service:latest
++
++      - name: Upload build metadata
++        uses: actions/upload-artifact@v4
++        with:
++          name: images-meta
++          path: |
++            **/Dockerfile
++            docker-compose.yml
+-
+-      - name: Upload artifacts
+-        uses: actions
+-        with:
+-          name: docker-build
+-          path: .
++
+diff --git a/docker-compose.yml b/docker-compose.yml
+index 2e3e8d7..3fb8d24 100644
+--- a/docker-compose.yml
++++ b/docker-compose.yml
+@@ -1,6 +1,12 @@
+ version: "3.9"
+ 
+ services:
++  # пример healthcheck, добавь в каждый сервис со своим портом
++  proxy:
++    healthcheck:
++      test: ["CMD-SHELL", "curl -sf http://localhost:8080/health || exit 1"]
++      interval: 10s
++      timeout: 3s
++      retries: 15
++      start_period: 10s
++
+   # остальные сервисы...
+ 
++networks:
++  cinema:
++    name: cinemaabyss-network

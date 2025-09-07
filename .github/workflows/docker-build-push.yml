@@ -1,85 +1,148 @@
-name: Docker Build & Push
+name: Docker Build and Push
 
 on:
+  workflow_dispatch:
   push:
-    branches:
-      - main
-  pull_request:
+    branches: [ main ]
+    paths:
+      - 'src/**'
+      - '.github/workflows/docker-build-push.yml'
+      - 'docker-compose.yml'
+      - 'tests/**'
+  release:
+    types: [published]
+
+env:
+  REGISTRY: ghcr.io
+  MONOLITH_IMAGE_NAME: ${{ github.repository }}/monolith
+  MOVIES_IMAGE_NAME: ${{ github.repository }}/movies-service
+  EVENTS_IMAGE_NAME: ${{ github.repository }}/events-service
+  PROXY_IMAGE_NAME: ${{ github.repository }}/proxy-service
+  TESTS_IMAGE_NAME: ${{ github.repository }}/tests
 
 jobs:
-  build-and-test:
+  build-and-push:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@v2
 
-      - name: Start services with docker-compose
-        run: docker compose up -d
-
-      - name: Wait for monolith service
-        run: |
-          echo "Waiting for monolith..."
-          for i in {1..30}; do
-            if curl -s http://localhost:8080/api/health > /dev/null; then
-              echo "Monolith is up!"
-              exit 0
-            fi
-            sleep 5
-          done
-          echo "Monolith failed to start"
-          exit 1
-
-      - name: Wait for movies service
-        run: |
-          echo "Waiting for movies-service..."
-          for i in {1..30}; do
-            if curl -s http://localhost:8081/api/movies/health > /dev/null; then
-              echo "Movies service is up!"
-              exit 0
-            fi
-            sleep 5
-          done
-          echo "Movies service failed to start"
-          exit 1
-
-      - name: Wait for events service
-        run: |
-          echo "Waiting for events-service..."
-          for i in {1..30}; do
-            if curl -s http://localhost:8082/api/events/health > /dev/null; then
-              echo "Events service is up!"
-              exit 0
-            fi
-            sleep 5
-          done
-          echo "Events service failed to start"
-          exit 1
-
-      - name: Wait for proxy service
-        run: |
-          echo "Waiting for proxy-service..."
-          for i in {1..30}; do
-            if curl -s http://localhost:8083/api/health > /dev/null; then
-              echo "Proxy service is up!"
-              exit 0
-            fi
-            sleep 5
-          done
-          echo "Proxy service failed to start"
-          exit 1
-
-      - name: Build API tests image
-        run: docker build -t cinemaabyss-api-tests -f Dockerfile .
-
-      - name: Run API tests
-        run: docker run --network=cinemaabyss-network -v "$(pwd)/reports:/app/reports" cinemaabyss-api-tests
-
-      - name: Upload test reports
-        uses: actions/upload-artifact@v4
+      - name: Log in to the Container registry
+        uses: docker/login-action@v2
         with:
-          name: test-reports
-          path: reports
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # Monolith
+      - name: Build and push Monolith
+        uses: docker/build-push-action@v4
+        with:
+          context: ./src/monolith
+          push: true
+          tags: ${{ env.REGISTRY }}/${{ env.MONOLITH_IMAGE_NAME }}:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      # Movies Service
+      - name: Build and push Movies Service
+        uses: docker/build-push-action@v4
+        with:
+          context: ./src/microservices/movies
+          push: true
+          tags: ${{ env.REGISTRY }}/${{ env.MOVIES_IMAGE_NAME }}:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      # Events Service
+      - name: Build and push Events Service
+        uses: docker/build-push-action@v4
+        with:
+          context: ./src/microservices/events
+          push: true
+          tags: ${{ env.REGISTRY }}/${{ env.EVENTS_IMAGE_NAME }}:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      # Proxy Service
+      - name: Build and push Proxy Service
+        uses: docker/build-push-action@v4
+        with:
+          context: ./src/microservices/proxy
+          push: true
+          tags: ${{ env.REGISTRY }}/${{ env.PROXY_IMAGE_NAME }}:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      # Tests (Postman tests)
+      - name: Build and push Tests
+        uses: docker/build-push-action@v4
+        with:
+          context: ./tests/postman
+          push: true
+          tags: ${{ env.REGISTRY }}/${{ env.TESTS_IMAGE_NAME }}:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  api-tests:
+    runs-on: ubuntu-latest
+    needs: build-and-push
+    services:
+      postgres:
+        image: postgres:14
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres_password
+          POSTGRES_DB: cinemaabyss
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      zookeeper:
+        image: wurstmeister/zookeeper:latest
+      kafka:
+        image: wurstmeister/kafka:2.13-2.7.0
+        environment:
+          KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092
+          KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: Log in to the Container registry
+        uses: docker/login-action@v2
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Wait for services to be ready
+        run: |
+          sleep 30 # Wait for PostgreSQL, Kafka to start
+
+      - name: Run API Tests
+        run: |
+          docker run --rm \
+            --network host \
+            -e API_URL=http://localhost:8000 \
+            -e DB_HOST=localhost \
+            -e DB_PORT=5432 \
+            -e DB_USER=postgres \
+            -e DB_PASSWORD=postgres_password \
+            -e DB_NAME=cinemaabyss \
+            -e KAFKA_BROKERS=localhost:9092 \
+            ${{ env.REGISTRY }}/${{ env.TESTS_IMAGE_NAME }}:latest

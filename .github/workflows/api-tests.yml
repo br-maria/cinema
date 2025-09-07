@@ -35,14 +35,13 @@ jobs:
           node-version: '18'
 
       - name: Install dependencies
-        run: cd cinema/tests/postman && npm install
+        run: cd tests/postman && npm install
 
       - name: Start services
-        run: cd cinema && docker compose up -d --build
+        run: docker compose up -d --build
 
       - name: Wait for services to be healthy
         run: |
-          cd cinema
           for i in {1..30}; do
             unhealthy=$(docker compose ps --format json | jq -r '.[] | select(.Health!="healthy")')
             if [ -z "$unhealthy" ]; then
@@ -57,4 +56,4 @@ jobs:
           exit 1
 
       - name: Run tests
-        run: cd cinema/tests/postman && npm test
+        run: cd tests/postman && npm test

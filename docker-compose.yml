@@ -1,85 +1,119 @@
-name: Docker Build & Push
+services:
+  postgres:
+    image: postgres:15
+    environment:
+      POSTGRES_USER: cinema
+      POSTGRES_PASSWORD: cinema
+      POSTGRES_DB: cinema
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U cinema"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
 
-on:
-  push:
-    branches:
-      - main
-  pull_request:
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.5.0
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+    ports:
+      - "2181:2181"
+    healthcheck:
+      test: ["CMD", "echo", "ruok", "|", "nc", "localhost", "2181"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
-jobs:
-  build-and-test:
-    runs-on: ubuntu-latest
+  kafka:
+    image: confluentinc/cp-kafka:7.5.0
+    environment:
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,PLAINTEXT_HOST://localhost:29092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+    depends_on:
+      - zookeeper
+    ports:
+      - "9092:9092"
+      - "29092:29092"
+    healthcheck:
+      test: ["CMD-SHELL", "kafka-topics --bootstrap-server localhost:9092 --list || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 20s
 
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+  monolith:
+    build:
+      context: ./monolith
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8080/api/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+  movies-service:
+    build:
+      context: ./movies-service
+    ports:
+      - "8081:8081"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8081/api/movies/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
 
-      - name: Start services with docker-compose
-        run: docker compose up -d
+  events-service:
+    build:
+      context: ./events-service
+    ports:
+      - "8082:8082"
+    depends_on:
+      kafka:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8082/api/events/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
 
-      - name: Wait for monolith service
-        run: |
-          echo "Waiting for monolith..."
-          for i in {1..30}; do
-            if curl -s http://localhost:8080/api/health > /dev/null; then
-              echo "Monolith is up!"
-              exit 0
-            fi
-            sleep 5
-          done
-          echo "Monolith failed to start"
-          exit 1
+  proxy-service:
+    build:
+      context: ./proxy-service
+    ports:
+      - "8083:8083"
+    depends_on:
+      monolith:
+        condition: service_healthy
+      movies-service:
+        condition: service_healthy
+      events-service:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8083/api/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
 
-      - name: Wait for movies service
-        run: |
-          echo "Waiting for movies-service..."
-          for i in {1..30}; do
-            if curl -s http://localhost:8081/api/movies/health > /dev/null; then
-              echo "Movies service is up!"
-              exit 0
-            fi
-            sleep 5
-          done
-          echo "Movies service failed to start"
-          exit 1
-
-      - name: Wait for events service
-        run: |
-          echo "Waiting for events-service..."
-          for i in {1..30}; do
-            if curl -s http://localhost:8082/api/events/health > /dev/null; then
-              echo "Events service is up!"
-              exit 0
-            fi
-            sleep 5
-          done
-          echo "Events service failed to start"
-          exit 1
-
-      - name: Wait for proxy service
-        run: |
-          echo "Waiting for proxy-service..."
-          for i in {1..30}; do
-            if curl -s http://localhost:8083/api/health > /dev/null; then
-              echo "Proxy service is up!"
-              exit 0
-            fi
-            sleep 5
-          done
-          echo "Proxy service failed to start"
-          exit 1
-
-      - name: Build API tests image
-        run: docker build -t cinemaabyss-api-tests -f Dockerfile .
-
-      - name: Run API tests
-        run: docker run --network=cinemaabyss-network -v "$(pwd)/reports:/app/reports" cinemaabyss-api-tests
-
-      - name: Upload test reports
-        uses: actions/upload-artifact@v4
-        with:
-          name: test-reports
-          path: reports
+networks:
+  default:
+    name: cinemaabyss-network

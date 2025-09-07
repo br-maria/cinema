@@ -1,56 +1,55 @@
-name: Docker Build and Push
+services:
+  monolith:
+    build:
+      context: ./src/monolith
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+    networks:
+      - cinema-network
 
-on:
-  push:
-    branches: [ main ]
+  movies-service:
+    build:
+      context: ./src/microservices/movies
+      dockerfile: Dockerfile
+    ports:
+      - "3001:3000"
+    environment:
+      - NODE_ENV=production
+    networks:
+      - cinema-network
 
-jobs:
-  build-and-push:
-    runs-on: ubuntu-latest
+  events-service:
+    build:
+      context: ./src/microservices/events
+      dockerfile: Dockerfile
+    ports:
+      - "3002:3000"
+    environment:
+      - NODE_ENV=production
+    networks:
+      - cinema-network
 
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+  proxy-service:
+    build:
+      context: ./src/microservices/proxy
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    environment:
+      - NODE_ENV=production
+      - MONOLITH_URL=http://monolith:3000
+      - MOVIES_SERVICE_URL=http://movies-service:3000
+      - EVENTS_SERVICE_URL=http://events-service:3000
+    depends_on:
+      - monolith
+      - movies-service
+      - events-service
+    networks:
+      - cinema-network
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Log in to Docker Hub
-        uses: docker/login-action@v3
-        with:
-          username: ${{ secrets.DOCKER_USERNAME }}
-          password: ${{ secrets.DOCKER_PASSWORD }}
-
-      - name: Build and push Proxy
-        uses: docker/build-push-action@v6
-        with:
-          context: ./proxy
-          push: true
-          tags: ${{ secrets.DOCKER_USERNAME }}/cinema-proxy:latest
-
-      - name: Build and push Events
-        uses: docker/build-push-action@v6
-        with:
-          context: ./events
-          push: true
-          tags: ${{ secrets.DOCKER_USERNAME }}/cinema-events:latest
-
-      - name: Build and push Monolith
-        uses: docker/build-push-action@v6
-        with:
-          context: ./monolith
-          push: true
-          tags: ${{ secrets.DOCKER_USERNAME }}/cinema-monolith:latest
-
-      - name: Build and push Movies
-        uses: docker/build-push-action@v6
-        with:
-          context: ./movies
-          push: true
-          tags: ${{ secrets.DOCKER_USERNAME }}/cinema-movies:latest
-
-      - name: Upload artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: docker-images
-          path: .
+networks:
+  cinema-network:
+    driver: bridge

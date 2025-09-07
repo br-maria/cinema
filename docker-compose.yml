@@ -1,119 +1,145 @@
+version: '3.8'
+
 services:
+  # PostgreSQL Database
   postgres:
-    image: postgres:15
+    image: postgres:14
+    container_name: cinemaabyss-postgres
     environment:
-      POSTGRES_USER: cinema
-      POSTGRES_PASSWORD: cinema
-      POSTGRES_DB: cinema
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres_password
+      POSTGRES_DB: cinemaabyss
     ports:
       - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./src/database/init.sql:/docker-entrypoint-initdb.d/init.sql
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U cinema"]
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 10s
       timeout: 5s
       retries: 5
-      start_period: 10s
+    networks:
+      - cinemaabyss-network
 
+  # ZooKeeper for Kafka
   zookeeper:
-    image: confluentinc/cp-zookeeper:7.5.0
-    environment:
-      ZOOKEEPER_CLIENT_PORT: 2181
+    image: wurstmeister/zookeeper:latest
+    container_name: cinemaabyss-zookeeper
     ports:
       - "2181:2181"
-    healthcheck:
-      test: ["CMD", "echo", "ruok", "|", "nc", "localhost", "2181"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+    networks:
+      - cinemaabyss-network
 
+  # Kafka
   kafka:
-    image: confluentinc/cp-kafka:7.5.0
-    environment:
-      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,PLAINTEXT_HOST://localhost:29092
-      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
-      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
-      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+    image: wurstmeister/kafka:2.13-2.7.0
+    container_name: cinemaabyss-kafka
     depends_on:
       - zookeeper
     ports:
       - "9092:9092"
-      - "29092:29092"
-    healthcheck:
-      test: ["CMD-SHELL", "kafka-topics --bootstrap-server localhost:9092 --list || exit 1"]
-      interval: 15s
-      timeout: 10s
-      retries: 10
-      start_period: 20s
+    environment:
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_CREATE_TOPICS: "movie-events:1:1,user-events:1:1,payment-events:1:1"
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    networks:
+      - cinemaabyss-network
 
+  # Monolith Service
   monolith:
     build:
-      context: ./monolith
+      context: ./src/monolith
+      dockerfile: Dockerfile
+    container_name: cinemaabyss-monolith
+    depends_on:
+      - postgres
     ports:
       - "8080:8080"
-    depends_on:
-      postgres:
-        condition: service_healthy
-      kafka:
-        condition: service_healthy
-    healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:8080/api/health || exit 1"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 20s
+    environment:
+      PORT: 8080
+      DB_CONNECTION_STRING: postgres://postgres:postgres_password@postgres:5432/cinemaabyss?sslmode=disable
+    networks:
+      - cinemaabyss-network
 
+  # Movies Microservice
   movies-service:
     build:
-      context: ./movies-service
+      context: ./src/microservices/movies
+      dockerfile: Dockerfile
+    container_name: cinemaabyss-movies-service
+    depends_on:
+      - postgres
     ports:
       - "8081:8081"
-    depends_on:
-      postgres:
-        condition: service_healthy
-      kafka:
-        condition: service_healthy
-    healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:8081/api/movies/health || exit 1"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 20s
+    environment:
+      PORT: 8081
+      DB_CONNECTION_STRING: postgres://postgres:postgres_password@postgres:5432/cinemaabyss?sslmode=disable
+    networks:
+      - cinemaabyss-network
 
-  events-service:
+  # Events Microservice
+  events:
     build:
-      context: ./events-service
+      context: ./src/microservices/events
+      dockerfile: Dockerfile
+    container_name: cinemaabyss-events
+    depends_on:
+      - postgres
+      - kafka
     ports:
       - "8082:8082"
-    depends_on:
-      kafka:
-        condition: service_healthy
-    healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:8082/api/events/health || exit 1"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 20s
+    environment:
+      PORT: 8082
+      KAFKA_BROKERS: kafka:9092
+    networks:
+      - cinemaabyss-network
 
+  # Proxy Service (API Gateway)
   proxy-service:
     build:
-      context: ./proxy-service
-    ports:
-      - "8083:8083"
+      context: ./src/microservices/proxy
+      dockerfile: Dockerfile
+    container_name: cinemaabyss-proxy-service
     depends_on:
-      monolith:
-        condition: service_healthy
-      movies-service:
-        condition: service_healthy
-      events-service:
-        condition: service_healthy
-    healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:8083/api/health || exit 1"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 20s
+      - monolith
+      - movies-service
+      - events
+    ports:
+      - "8000:8000"
+    environment:
+      PORT: 8000
+      MONOLITH_URL: http://monolith:8080
+      MOVIES_SERVICE_URL: http://movies-service:8081
+      EVENTS_SERVICE_URL: http://events:8082
+      GRADUAL_MIGRATION: "true"
+      MOVIES_MIGRATION_PERCENT: "50"
+    networks:
+      - cinemaabyss-network
+
+  # Kafka UI for monitoring Kafka
+  kafka-ui:
+    image: provectuslabs/kafka-ui:latest
+    container_name: cinemaabyss-kafka-ui
+    depends_on:
+      - kafka
+    ports:
+      - "8090:8080"
+    environment:
+      KAFKA_CLUSTERS_0_NAME: cinemaabyss
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:9092
+      KAFKA_CLUSTERS_0_ZOOKEEPER: zookeeper:2181
+    networks:
+      - cinemaabyss-network
+
+volumes:
+  postgres-data:
 
 networks:
-  default:
+  cinemaabyss-network:
     name: cinemaabyss-network
+    driver: bridge

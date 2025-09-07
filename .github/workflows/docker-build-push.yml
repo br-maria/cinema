@@ -1,55 +1,85 @@
-services:
-  monolith:
-    build:
-      context: ./src/monolith
-      dockerfile: Dockerfile
-    ports:
-      - "3000:3000"
-    environment:
-      - NODE_ENV=production
-    networks:
-      - cinema-network
+name: Docker Build & Push
 
-  movies-service:
-    build:
-      context: ./src/microservices/movies
-      dockerfile: Dockerfile
-    ports:
-      - "3001:3000"
-    environment:
-      - NODE_ENV=production
-    networks:
-      - cinema-network
+on:
+  push:
+    branches:
+      - main
+  pull_request:
 
-  events-service:
-    build:
-      context: ./src/microservices/events
-      dockerfile: Dockerfile
-    ports:
-      - "3002:3000"
-    environment:
-      - NODE_ENV=production
-    networks:
-      - cinema-network
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
 
-  proxy-service:
-    build:
-      context: ./src/microservices/proxy
-      dockerfile: Dockerfile
-    ports:
-      - "8080:8080"
-    environment:
-      - NODE_ENV=production
-      - MONOLITH_URL=http://monolith:3000
-      - MOVIES_SERVICE_URL=http://movies-service:3000
-      - EVENTS_SERVICE_URL=http://events-service:3000
-    depends_on:
-      - monolith
-      - movies-service
-      - events-service
-    networks:
-      - cinema-network
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-networks:
-  cinema-network:
-    driver: bridge
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Start services with docker-compose
+        run: docker compose up -d
+
+      - name: Wait for monolith service
+        run: |
+          echo "Waiting for monolith..."
+          for i in {1..30}; do
+            if curl -s http://localhost:8080/api/health > /dev/null; then
+              echo "Monolith is up!"
+              exit 0
+            fi
+            sleep 5
+          done
+          echo "Monolith failed to start"
+          exit 1
+
+      - name: Wait for movies service
+        run: |
+          echo "Waiting for movies-service..."
+          for i in {1..30}; do
+            if curl -s http://localhost:8081/api/movies/health > /dev/null; then
+              echo "Movies service is up!"
+              exit 0
+            fi
+            sleep 5
+          done
+          echo "Movies service failed to start"
+          exit 1
+
+      - name: Wait for events service
+        run: |
+          echo "Waiting for events-service..."
+          for i in {1..30}; do
+            if curl -s http://localhost:8082/api/events/health > /dev/null; then
+              echo "Events service is up!"
+              exit 0
+            fi
+            sleep 5
+          done
+          echo "Events service failed to start"
+          exit 1
+
+      - name: Wait for proxy service
+        run: |
+          echo "Waiting for proxy-service..."
+          for i in {1..30}; do
+            if curl -s http://localhost:8083/api/health > /dev/null; then
+              echo "Proxy service is up!"
+              exit 0
+            fi
+            sleep 5
+          done
+          echo "Proxy service failed to start"
+          exit 1
+
+      - name: Build API tests image
+        run: docker build -t cinemaabyss-api-tests -f Dockerfile .
+
+      - name: Run API tests
+        run: docker run --network=cinemaabyss-network -v "$(pwd)/reports:/app/reports" cinemaabyss-api-tests
+
+      - name: Upload test reports
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-reports
+          path: reports

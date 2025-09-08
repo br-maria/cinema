@@ -2,52 +2,70 @@ name: API Tests
 
 on:
   push:
-    branches: [ main ]
+    branches: [ main, master ]
   pull_request:
-    branches: [ main ]
+    branches: [ main, master ]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to run tests against'
+        required: true
+        default: 'docker'
+        type: choice
+        options:
+          - local
+          - docker
+      test_folder:
+        description: 'Test folder to run (leave empty for all)'
+        required: false
+        type: string
 
 jobs:
-  test:
+  api-tests:
+    name: Run API Tests
     runs-on: ubuntu-latest
-
+    
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v3
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - name: Set up Docker Compose
+        run: |
+          docker compose --version
+      
+      - name: Start services with Docker Compose
+        run: |
+          docker compose up -d
+          # Wait for services to be ready
+          echo "Waiting for services to be ready..."
+          sleep 120
+      
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
         with:
           node-version: '18'
           cache: 'npm'
-          cache-dependency-path: 'tests/postman/package-lock.json'
-
-      - name: Install dependencies
-        run: npm ci
-        working-directory: tests/postman  # ← ДОБАВЬТЕ ЭТО
-
-      - name: Start services
-        run: docker compose up -d --build
-
-      - name: Wait for services to be healthy
+          cache-dependency-path: tests/postman/package-lock.json
+      
+      - name: Install Newman and dependencies
+        working-directory: tests/postman
+        run: npm install
+      
+      - name: Run API tests
+        working-directory: tests/postman
         run: |
-          for i in {1..30}; do
-            # ИСПРАВЛЕННАЯ КОМАНДА:
-            if docker compose exec postgres pg_isready -U postgres 2>/dev/null && \
-               docker compose ps | grep -q "Up"; then
-              echo "All services are healthy!"
-              exit 0
-            fi
-            echo "Waiting for services... ($i/30)"
-            sleep 2
-          done
-          echo "Services failed to become healthy"
-          docker compose ps
-          exit 1
 
-      - name: Run tests
-        run: npm test
-        working-directory: tests/postman  # ← ДОБАВЬТЕ ЭТО
-
-      - name: Cleanup
+          docker compose up -d
+          # Wait for services to be ready
+          echo "Waiting for services to be ready..."
+          sleep 15
+          # Build the Docker image
+          docker build -t cinemaabyss-api-tests .
+          
+          # Run the tests in Docker
+          docker run --network=cinemaabyss-network -v "$(pwd)/reports:/app/reports" cinemaabyss-api-tests
+        
+      
+      - name: Stop services
         if: always()
         run: docker compose down

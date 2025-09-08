@@ -2,15 +2,17 @@ FROM node:18-alpine
 
 WORKDIR /app
 
-# Копируем package.json и package-lock.json из папки tests
+# Copy package.json and package-lock.json
 COPY package*.json ./
+
+# Install dependencies
 RUN npm install
 
-# Копируем все файлы из tests (включая postman/, run-tests.sh и т.д.)
+# Copy test files
 COPY . .
 
-# Делаем скрипт запуска исполняемым
-RUN chmod +x run-tests.sh
+# Set default command to run tests
+ENTRYPOINT ["node", "run-tests.js"]
 
-# Запуск тестов
-ENTRYPOINT ["./run-tests.sh"]
+# Default arguments - can be overridden at runtime
+CMD ["--environment", "docker"]

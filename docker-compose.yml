@@ -1,3 +1,4 @@
+
 services:
   # PostgreSQL Database
   postgres:
@@ -61,11 +62,6 @@ services:
     environment:
       PORT: 8080
       DB_CONNECTION_STRING: postgres://postgres:postgres_password@postgres:5432/cinemaabyss?sslmode=disable
-    healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:8080/health || exit 1"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
     networks:
       - cinemaabyss-network
 
@@ -82,11 +78,6 @@ services:
     environment:
       PORT: 8081
       DB_CONNECTION_STRING: postgres://postgres:postgres_password@postgres:5432/cinemaabyss?sslmode=disable
-    healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:8081/health || exit 1"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
     networks:
       - cinemaabyss-network
 
@@ -104,11 +95,6 @@ services:
     environment:
       PORT: 8082
       KAFKA_BROKERS: kafka:9092
-    healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:8082/health || exit 1"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
     networks:
       - cinemaabyss-network
 
@@ -131,11 +117,6 @@ services:
       EVENTS_SERVICE_URL: http://events:8082
       GRADUAL_MIGRATION: "true"
       MOVIES_MIGRATION_PERCENT: "50"
-    healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:8000/health || exit 1"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
     networks:
       - cinemaabyss-network
 

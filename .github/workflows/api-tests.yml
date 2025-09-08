@@ -10,21 +10,6 @@ jobs:
   test:
     runs-on: ubuntu-latest
 
-    services:
-      postgres:
-        image: postgres:14
-        env:
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: postgres
-          POSTGRES_DB: cinema
-        ports:
-          - 5433:5432
-        options: >-
-          --health-cmd="pg_isready -U postgres"
-          --health-interval=10s
-          --health-timeout=5s
-          --health-retries=5
-
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -33,9 +18,12 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '18'
+          cache: 'npm'
+          cache-dependency-path: 'tests/postman/package-lock.json'
 
       - name: Install dependencies
-        run: cd tests/postman && npm install
+        run: npm ci
+        working-directory: tests/postman  # ← ДОБАВЬТЕ ЭТО
 
       - name: Start services
         run: docker compose up -d --build
@@ -43,17 +31,23 @@ jobs:
       - name: Wait for services to be healthy
         run: |
           for i in {1..30}; do
-            unhealthy=$(docker compose ps --format json | jq -r '.[] | select(.Health!="healthy")')
-            if [ -z "$unhealthy" ]; then
+            # ИСПРАВЛЕННАЯ КОМАНДА:
+            if docker compose exec postgres pg_isready -U postgres 2>/dev/null && \
+               docker compose ps | grep -q "Up"; then
               echo "All services are healthy!"
               exit 0
             fi
-            echo "Waiting for services..."
-            sleep 5
+            echo "Waiting for services... ($i/30)"
+            sleep 2
           done
           echo "Services failed to become healthy"
           docker compose ps
           exit 1
 
       - name: Run tests
-        run: cd tests/postman && npm test
+        run: npm test
+        working-directory: tests/postman  # ← ДОБАВЬТЕ ЭТО
+
+      - name: Cleanup
+        if: always()
+        run: docker compose down

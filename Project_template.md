@@ -351,7 +351,7 @@ minikube tunnel
 
 Потом вызовите 
 https://cinemaabyss.example.com/api/movies
-и приложите скриншот развертывания helm и вывода https://cinemaabyss.example.com/api/movies
+и приложите [скриншот](https://github.com/br-maria/cinema/tree/main/%D1%81%D0%BA%D1%80%D0%B8%D0%BD%D1%88%D0%BE%D1%82%D1%8B/%D0%B7%D0%B0%D0%B4%D0%B0%D0%BD%D0%B8%D0%B5%204) развертывания helm и вывода https://cinemaabyss.example.com/api/movies
 
 ## Удаляем все
 

@@ -1,0 +1,340 @@
+maria@MacBook-Air-Maria postman % kubectl -n cinemaabyss get pod
+NAME                              READY   STATUS    RESTARTS      AGE
+events-service-56957c9954-m4nsk   1/1     Running   0             18m
+kafka-0                           1/1     Running   1 (24m ago)   24m
+monolith-567b5cd464-jv4lp         1/1     Running   0             24m
+movies-service-7c954fbdd7-df7zp   1/1     Running   0             23m
+postgres-0                        1/1     Running   0             25m
+zookeeper-0                       1/1     Running   0             24m
+maria@MacBook-Air-Maria postman % kubectl -n cinemaabyss logs events-service-56957c9954-m4nsk
+
+  .   ____          _            __ _ _
+ /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
+( ( )\___ | '_ | '_| | '_ \/ _` | \ \ \ \
+ \\/  ___)| |_)| | | | | || (_| |  ) ) ) )
+  '  |____| .__|_| |_|_| |_\__, | / / / /
+ =========|_|==============|___/=/_/_/_/
+ :: Spring Boot ::                (v3.2.0)
+
+2025-09-09T20:53:09.625Z  INFO 1 --- [           main] c.cinemaabyss.events.EventsApplication   : Starting EventsApplication v0.0.1-SNAPSHOT using Java 17.0.16 with PID 1 (/app/app.jar started by root in /app)
+2025-09-09T20:53:09.716Z  INFO 1 --- [           main] c.cinemaabyss.events.EventsApplication   : No active profile set, falling back to 1 default profile: "default"
+2025-09-09T20:53:09.925Z  WARN 1 --- [           main] o.s.c.annotation.AnnotationTypeMapping   : Support for convention-based annotation attribute overrides is deprecated and will be removed in Spring Framework 6.2. Please annotate the following attributes in @org.springframework.retry.annotation.EnableRetry with appropriate @AliasFor declarations: [proxyTargetClass]
+2025-09-09T20:53:16.017Z  INFO 1 --- [           main] .s.d.r.c.RepositoryConfigurationDelegate : Bootstrapping Spring Data JPA repositories in DEFAULT mode.
+2025-09-09T20:53:16.125Z  INFO 1 --- [           main] .s.d.r.c.RepositoryConfigurationDelegate : Finished Spring Data repository scanning in 101 ms. Found 0 JPA repository interfaces.
+2025-09-09T20:53:20.719Z  INFO 1 --- [           main] o.s.b.w.embedded.tomcat.TomcatWebServer  : Tomcat initialized with port 8082 (http)
+2025-09-09T20:53:20.727Z  INFO 1 --- [           main] o.apache.catalina.core.StandardService   : Starting service [Tomcat]
+2025-09-09T20:53:20.728Z  INFO 1 --- [           main] o.apache.catalina.core.StandardEngine    : Starting Servlet engine: [Apache Tomcat/10.1.16]
+2025-09-09T20:53:21.320Z  INFO 1 --- [           main] o.a.c.c.C.[Tomcat].[localhost].[/]       : Initializing Spring embedded WebApplicationContext
+2025-09-09T20:53:21.321Z  INFO 1 --- [           main] w.s.c.ServletWebServerApplicationContext : Root WebApplicationContext: initialization completed in 11294 ms
+2025-09-09T20:53:24.023Z  INFO 1 --- [           main] o.hibernate.jpa.internal.util.LogHelper  : HHH000204: Processing PersistenceUnitInfo [name: default]
+2025-09-09T20:53:24.323Z  INFO 1 --- [           main] org.hibernate.Version                    : HHH000412: Hibernate ORM core version 6.3.1.Final
+2025-09-09T20:53:24.521Z  INFO 1 --- [           main] o.h.c.internal.RegionFactoryInitiator    : HHH000026: Second-level cache disabled
+2025-09-09T20:53:25.525Z  INFO 1 --- [           main] o.s.o.j.p.SpringPersistenceUnitInfo      : No LoadTimeWeaver setup: ignoring JPA class transformer
+2025-09-09T20:53:25.713Z  INFO 1 --- [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Starting...
+2025-09-09T20:53:26.521Z  INFO 1 --- [           main] com.zaxxer.hikari.pool.HikariPool        : HikariPool-1 - Added connection org.postgresql.jdbc.PgConnection@6fefc5ea
+2025-09-09T20:53:26.523Z  INFO 1 --- [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Start completed.
+2025-09-09T20:53:26.626Z  WARN 1 --- [           main] org.hibernate.orm.deprecation            : HHH90000025: PostgreSQLDialect does not need to be specified explicitly using 'hibernate.dialect' (remove the property setting and it will be selected by default)
+2025-09-09T20:53:29.018Z  INFO 1 --- [           main] o.h.e.t.j.p.i.JtaPlatformInitiator       : HHH000489: No JTA platform available (set 'hibernate.transaction.jta.platform' to enable JTA platform integration)
+2025-09-09T20:53:29.022Z  INFO 1 --- [           main] j.LocalContainerEntityManagerFactoryBean : Initialized JPA EntityManagerFactory for persistence unit 'default'
+2025-09-09T20:53:30.014Z  WARN 1 --- [           main] JpaBaseConfiguration$JpaWebConfiguration : spring.jpa.open-in-view is enabled by default. Therefore, database queries may be performed during view rendering. Explicitly configure spring.jpa.open-in-view to disable this warning
+2025-09-09T20:53:33.816Z  INFO 1 --- [           main] o.s.b.a.e.web.EndpointLinksResolver      : Exposing 2 endpoint(s) beneath base path '/actuator'
+2025-09-09T20:53:34.220Z  INFO 1 --- [           main] o.a.k.clients.admin.AdminClientConfig    : AdminClientConfig values: 
+        auto.include.jmx.reporter = true
+        bootstrap.servers = [kafka:9092]
+        client.dns.lookup = use_all_dns_ips
+        client.id = 
+        connections.max.idle.ms = 300000
+        default.api.timeout.ms = 60000
+        metadata.max.age.ms = 300000
+        metric.reporters = []
+        metrics.num.samples = 2
+        metrics.recording.level = INFO
+        metrics.sample.window.ms = 30000
+        receive.buffer.bytes = 65536
+        reconnect.backoff.max.ms = 1000
+        reconnect.backoff.ms = 50
+        request.timeout.ms = 30000
+        retries = 2147483647
+        retry.backoff.ms = 100
+        sasl.client.callback.handler.class = null
+        sasl.jaas.config = null
+        sasl.kerberos.kinit.cmd = /usr/bin/kinit
+        sasl.kerberos.min.time.before.relogin = 60000
+        sasl.kerberos.service.name = null
+        sasl.kerberos.ticket.renew.jitter = 0.05
+        sasl.kerberos.ticket.renew.window.factor = 0.8
+        sasl.login.callback.handler.class = null
+        sasl.login.class = null
+        sasl.login.connect.timeout.ms = null
+        sasl.login.read.timeout.ms = null
+        sasl.login.refresh.buffer.seconds = 300
+        sasl.login.refresh.min.period.seconds = 60
+        sasl.login.refresh.window.factor = 0.8
+        sasl.login.refresh.window.jitter = 0.05
+        sasl.login.retry.backoff.max.ms = 10000
+        sasl.login.retry.backoff.ms = 100
+        sasl.mechanism = GSSAPI
+        sasl.oauthbearer.clock.skew.seconds = 30
+        sasl.oauthbearer.expected.audience = null
+        sasl.oauthbearer.expected.issuer = null
+        sasl.oauthbearer.jwks.endpoint.refresh.ms = 3600000
+        sasl.oauthbearer.jwks.endpoint.retry.backoff.max.ms = 10000
+        sasl.oauthbearer.jwks.endpoint.retry.backoff.ms = 100
+        sasl.oauthbearer.jwks.endpoint.url = null
+        sasl.oauthbearer.scope.claim.name = scope
+        sasl.oauthbearer.sub.claim.name = sub
+        sasl.oauthbearer.token.endpoint.url = null
+        security.protocol = PLAINTEXT
+        security.providers = null
+        send.buffer.bytes = 131072
+        socket.connection.setup.timeout.max.ms = 30000
+        socket.connection.setup.timeout.ms = 10000
+        ssl.cipher.suites = null
+        ssl.enabled.protocols = [TLSv1.2, TLSv1.3]
+        ssl.endpoint.identification.algorithm = https
+        ssl.engine.factory.class = null
+        ssl.key.password = null
+        ssl.keymanager.algorithm = SunX509
+        ssl.keystore.certificate.chain = null
+        ssl.keystore.key = null
+        ssl.keystore.location = null
+        ssl.keystore.password = null
+        ssl.keystore.type = JKS
+        ssl.protocol = TLSv1.3
+        ssl.provider = null
+        ssl.secure.random.implementation = null
+        ssl.trustmanager.algorithm = PKIX
+        ssl.truststore.certificates = null
+        ssl.truststore.location = null
+        ssl.truststore.password = null
+        ssl.truststore.type = JKS
+
+2025-09-09T20:53:34.522Z  INFO 1 --- [           main] o.a.kafka.common.utils.AppInfoParser     : Kafka version: 3.6.0
+2025-09-09T20:53:34.522Z  INFO 1 --- [           main] o.a.kafka.common.utils.AppInfoParser     : Kafka commitId: 60e845626d8a465a
+2025-09-09T20:53:34.522Z  INFO 1 --- [           main] o.a.kafka.common.utils.AppInfoParser     : Kafka startTimeMs: 1757451214522
+2025-09-09T20:53:36.057Z  INFO 1 --- [| adminclient-1] o.a.kafka.common.utils.AppInfoParser     : App info kafka.admin.client for adminclient-1 unregistered
+2025-09-09T20:53:36.059Z  INFO 1 --- [| adminclient-1] o.apache.kafka.common.metrics.Metrics    : Metrics scheduler closed
+2025-09-09T20:53:36.059Z  INFO 1 --- [| adminclient-1] o.apache.kafka.common.metrics.Metrics    : Closing reporter org.apache.kafka.common.metrics.JmxReporter
+2025-09-09T20:53:36.059Z  INFO 1 --- [| adminclient-1] o.apache.kafka.common.metrics.Metrics    : Metrics reporters closed
+2025-09-09T20:53:36.116Z  INFO 1 --- [           main] o.s.b.w.embedded.tomcat.TomcatWebServer  : Tomcat started on port 8082 (http) with context path ''
+2025-09-09T20:53:36.218Z  INFO 1 --- [           main] o.a.k.clients.consumer.ConsumerConfig    : ConsumerConfig values: 
+        allow.auto.create.topics = true
+        auto.commit.interval.ms = 5000
+        auto.include.jmx.reporter = true
+        auto.offset.reset = earliest
+        bootstrap.servers = [kafka:9092]
+        check.crcs = true
+        client.dns.lookup = use_all_dns_ips
+        client.id = consumer-events-service-group-1
+        client.rack = 
+        connections.max.idle.ms = 540000
+        default.api.timeout.ms = 60000
+        enable.auto.commit = false
+        exclude.internal.topics = true
+        fetch.max.bytes = 52428800
+        fetch.max.wait.ms = 500
+        fetch.min.bytes = 1
+        group.id = events-service-group
+        group.instance.id = null
+        heartbeat.interval.ms = 3000
+        interceptor.classes = []
+        internal.leave.group.on.close = true
+        internal.throw.on.fetch.stable.offset.unsupported = false
+        isolation.level = read_uncommitted
+        key.deserializer = class org.apache.kafka.common.serialization.StringDeserializer
+        max.partition.fetch.bytes = 1048576
+        max.poll.interval.ms = 300000
+        max.poll.records = 500
+        metadata.max.age.ms = 300000
+        metric.reporters = []
+        metrics.num.samples = 2
+        metrics.recording.level = INFO
+        metrics.sample.window.ms = 30000
+        partition.assignment.strategy = [class org.apache.kafka.clients.consumer.RangeAssignor, class org.apache.kafka.clients.consumer.CooperativeStickyAssignor]
+        receive.buffer.bytes = 65536
+        reconnect.backoff.max.ms = 1000
+        reconnect.backoff.ms = 50
+        request.timeout.ms = 30000
+        retry.backoff.ms = 100
+        sasl.client.callback.handler.class = null
+        sasl.jaas.config = null
+        sasl.kerberos.kinit.cmd = /usr/bin/kinit
+        sasl.kerberos.min.time.before.relogin = 60000
+        sasl.kerberos.service.name = null
+        sasl.kerberos.ticket.renew.jitter = 0.05
+        sasl.kerberos.ticket.renew.window.factor = 0.8
+        sasl.login.callback.handler.class = null
+        sasl.login.class = null
+        sasl.login.connect.timeout.ms = null
+        sasl.login.read.timeout.ms = null
+        sasl.login.refresh.buffer.seconds = 300
+        sasl.login.refresh.min.period.seconds = 60
+        sasl.login.refresh.window.factor = 0.8
+        sasl.login.refresh.window.jitter = 0.05
+        sasl.login.retry.backoff.max.ms = 10000
+        sasl.login.retry.backoff.ms = 100
+        sasl.mechanism = GSSAPI
+        sasl.oauthbearer.clock.skew.seconds = 30
+        sasl.oauthbearer.expected.audience = null
+        sasl.oauthbearer.expected.issuer = null
+        sasl.oauthbearer.jwks.endpoint.refresh.ms = 3600000
+        sasl.oauthbearer.jwks.endpoint.retry.backoff.max.ms = 10000
+        sasl.oauthbearer.jwks.endpoint.retry.backoff.ms = 100
+        sasl.oauthbearer.jwks.endpoint.url = null
+        sasl.oauthbearer.scope.claim.name = scope
+        sasl.oauthbearer.sub.claim.name = sub
+        sasl.oauthbearer.token.endpoint.url = null
+        security.protocol = PLAINTEXT
+        security.providers = null
+        send.buffer.bytes = 131072
+        session.timeout.ms = 45000
+        socket.connection.setup.timeout.max.ms = 30000
+        socket.connection.setup.timeout.ms = 10000
+        ssl.cipher.suites = null
+        ssl.enabled.protocols = [TLSv1.2, TLSv1.3]
+        ssl.endpoint.identification.algorithm = https
+        ssl.engine.factory.class = null
+        ssl.key.password = null
+        ssl.keymanager.algorithm = SunX509
+        ssl.keystore.certificate.chain = null
+        ssl.keystore.key = null
+        ssl.keystore.location = null
+        ssl.keystore.password = null
+        ssl.keystore.type = JKS
+        ssl.protocol = TLSv1.3
+        ssl.provider = null
+        ssl.secure.random.implementation = null
+        ssl.trustmanager.algorithm = PKIX
+        ssl.truststore.certificates = null
+        ssl.truststore.location = null
+        ssl.truststore.password = null
+        ssl.truststore.type = JKS
+        value.deserializer = class org.apache.kafka.common.serialization.StringDeserializer
+
+2025-09-09T20:53:36.322Z  INFO 1 --- [           main] o.a.kafka.common.utils.AppInfoParser     : Kafka version: 3.6.0
+2025-09-09T20:53:36.322Z  INFO 1 --- [           main] o.a.kafka.common.utils.AppInfoParser     : Kafka commitId: 60e845626d8a465a
+2025-09-09T20:53:36.322Z  INFO 1 --- [           main] o.a.kafka.common.utils.AppInfoParser     : Kafka startTimeMs: 1757451216322
+2025-09-09T20:53:36.417Z  INFO 1 --- [           main] fkaConsumerFactory$ExtendedKafkaConsumer : [Consumer clientId=consumer-events-service-group-1, groupId=events-service-group] Subscribed to topic(s): events
+2025-09-09T20:53:36.715Z  INFO 1 --- [           main] c.cinemaabyss.events.EventsApplication   : Started EventsApplication in 29.998 seconds (process running for 32.555)
+2025-09-09T20:53:36.814Z  INFO 1 --- [ntainer#0-0-C-1] org.apache.kafka.clients.Metadata        : [Consumer clientId=consumer-events-service-group-1, groupId=events-service-group] Cluster ID: vDFefnxMTRmh2Uv0nxBMuQ
+2025-09-09T20:53:36.818Z  INFO 1 --- [nio-8082-exec-1] o.a.c.c.C.[Tomcat].[localhost].[/]       : Initializing Spring DispatcherServlet 'dispatcherServlet'
+2025-09-09T20:53:36.818Z  INFO 1 --- [nio-8082-exec-1] o.s.web.servlet.DispatcherServlet        : Initializing Servlet 'dispatcherServlet'
+2025-09-09T20:53:36.819Z  INFO 1 --- [nio-8082-exec-1] o.s.web.servlet.DispatcherServlet        : Completed initialization in 1 ms
+2025-09-09T20:53:38.349Z  INFO 1 --- [ntainer#0-0-C-1] o.a.k.c.c.internals.ConsumerCoordinator  : [Consumer clientId=consumer-events-service-group-1, groupId=events-service-group] Discovered group coordinator kafka:9092 (id: 2147483646 rack: null)
+2025-09-09T20:53:38.350Z  INFO 1 --- [ntainer#0-0-C-1] o.a.k.c.c.internals.ConsumerCoordinator  : [Consumer clientId=consumer-events-service-group-1, groupId=events-service-group] (Re-)joining group
+2025-09-09T20:53:38.410Z  INFO 1 --- [ntainer#0-0-C-1] o.a.k.c.c.internals.ConsumerCoordinator  : [Consumer clientId=consumer-events-service-group-1, groupId=events-service-group] Request joining group due to: need to re-join with the given member-id: consumer-events-service-group-1-02409d67-d998-4d50-b3da-a2584cc8d7cf
+2025-09-09T20:53:38.411Z  INFO 1 --- [ntainer#0-0-C-1] o.a.k.c.c.internals.ConsumerCoordinator  : [Consumer clientId=consumer-events-service-group-1, groupId=events-service-group] Request joining group due to: rebalance failed due to 'The group member needs to have a valid member id before actually entering a consumer group.' (MemberIdRequiredException)
+2025-09-09T20:53:38.411Z  INFO 1 --- [ntainer#0-0-C-1] o.a.k.c.c.internals.ConsumerCoordinator  : [Consumer clientId=consumer-events-service-group-1, groupId=events-service-group] (Re-)joining group
+2025-09-09T20:53:38.478Z  INFO 1 --- [ntainer#0-0-C-1] o.a.k.c.c.internals.ConsumerCoordinator  : [Consumer clientId=consumer-events-service-group-1, groupId=events-service-group] Successfully joined group with generation Generation{generationId=1, memberId='consumer-events-service-group-1-02409d67-d998-4d50-b3da-a2584cc8d7cf', protocol='range'}
+2025-09-09T20:53:38.481Z  INFO 1 --- [ntainer#0-0-C-1] o.a.k.c.c.internals.ConsumerCoordinator  : [Consumer clientId=consumer-events-service-group-1, groupId=events-service-group] Finished assignment for group at generation 1: {consumer-events-service-group-1-02409d67-d998-4d50-b3da-a2584cc8d7cf=Assignment(partitions=[events-0])}
+2025-09-09T20:53:38.537Z  INFO 1 --- [ntainer#0-0-C-1] o.a.k.c.c.internals.ConsumerCoordinator  : [Consumer clientId=consumer-events-service-group-1, groupId=events-service-group] Successfully synced group in generation Generation{generationId=1, memberId='consumer-events-service-group-1-02409d67-d998-4d50-b3da-a2584cc8d7cf', protocol='range'}
+2025-09-09T20:53:38.537Z  INFO 1 --- [ntainer#0-0-C-1] o.a.k.c.c.internals.ConsumerCoordinator  : [Consumer clientId=consumer-events-service-group-1, groupId=events-service-group] Notifying assignor about the new Assignment(partitions=[events-0])
+2025-09-09T20:53:38.586Z  INFO 1 --- [ntainer#0-0-C-1] o.a.k.c.c.internals.ConsumerCoordinator  : [Consumer clientId=consumer-events-service-group-1, groupId=events-service-group] Adding newly assigned partitions: events-0
+2025-09-09T20:53:38.599Z  INFO 1 --- [ntainer#0-0-C-1] o.a.k.c.c.internals.ConsumerCoordinator  : [Consumer clientId=consumer-events-service-group-1, groupId=events-service-group] Found no committed offset for partition events-0
+2025-09-09T20:53:38.625Z  INFO 1 --- [ntainer#0-0-C-1] o.a.k.c.c.internals.SubscriptionState    : [Consumer clientId=consumer-events-service-group-1, groupId=events-service-group] Resetting offset for partition events-0 to position FetchPosition{offset=0, offsetEpoch=Optional.empty, currentLeader=LeaderAndEpoch{leader=Optional[kafka:9092 (id: 1 rack: null)], epoch=0}}.
+2025-09-09T20:53:38.684Z  INFO 1 --- [ntainer#0-0-C-1] o.s.k.l.KafkaMessageListenerContainer    : events-service-group: partitions assigned: [events-0]
+2025-09-09T21:02:37.075Z  INFO 1 --- [ntainer#0-0-C-1] org.apache.kafka.clients.NetworkClient   : [Consumer clientId=consumer-events-service-group-1, groupId=events-service-group] Node -1 disconnected.
+2025-09-09T21:09:40.162Z  INFO 1 --- [nio-8082-exec-8] c.cinemaabyss.events.EventsController    : Received movie event: {movie_id=6, title=Test Movie Event, action=viewed, user_id=4}
+2025-09-09T21:09:40.257Z  INFO 1 --- [nio-8082-exec-8] o.a.k.clients.producer.ProducerConfig    : ProducerConfig values: 
+        acks = -1
+        auto.include.jmx.reporter = true
+        batch.size = 16384
+        bootstrap.servers = [kafka:9092]
+        buffer.memory = 33554432
+        client.dns.lookup = use_all_dns_ips
+        client.id = producer-1
+        compression.type = none
+        connections.max.idle.ms = 540000
+        delivery.timeout.ms = 120000
+        enable.idempotence = true
+        interceptor.classes = []
+        key.serializer = class org.apache.kafka.common.serialization.StringSerializer
+        linger.ms = 0
+        max.block.ms = 60000
+        max.in.flight.requests.per.connection = 5
+        max.request.size = 1048576
+        metadata.max.age.ms = 300000
+        metadata.max.idle.ms = 300000
+        metric.reporters = []
+        metrics.num.samples = 2
+        metrics.recording.level = INFO
+        metrics.sample.window.ms = 30000
+        partitioner.adaptive.partitioning.enable = true
+        partitioner.availability.timeout.ms = 0
+        partitioner.class = null
+        partitioner.ignore.keys = false
+        receive.buffer.bytes = 32768
+        reconnect.backoff.max.ms = 1000
+        reconnect.backoff.ms = 50
+        request.timeout.ms = 30000
+        retries = 2147483647
+        retry.backoff.ms = 100
+        sasl.client.callback.handler.class = null
+        sasl.jaas.config = null
+        sasl.kerberos.kinit.cmd = /usr/bin/kinit
+        sasl.kerberos.min.time.before.relogin = 60000
+        sasl.kerberos.service.name = null
+        sasl.kerberos.ticket.renew.jitter = 0.05
+        sasl.kerberos.ticket.renew.window.factor = 0.8
+        sasl.login.callback.handler.class = null
+        sasl.login.class = null
+        sasl.login.connect.timeout.ms = null
+        sasl.login.read.timeout.ms = null
+        sasl.login.refresh.buffer.seconds = 300
+        sasl.login.refresh.min.period.seconds = 60
+        sasl.login.refresh.window.factor = 0.8
+        sasl.login.refresh.window.jitter = 0.05
+        sasl.login.retry.backoff.max.ms = 10000
+        sasl.login.retry.backoff.ms = 100
+        sasl.mechanism = GSSAPI
+        sasl.oauthbearer.clock.skew.seconds = 30
+        sasl.oauthbearer.expected.audience = null
+        sasl.oauthbearer.expected.issuer = null
+        sasl.oauthbearer.jwks.endpoint.refresh.ms = 3600000
+        sasl.oauthbearer.jwks.endpoint.retry.backoff.max.ms = 10000
+        sasl.oauthbearer.jwks.endpoint.retry.backoff.ms = 100
+        sasl.oauthbearer.jwks.endpoint.url = null
+        sasl.oauthbearer.scope.claim.name = scope
+        sasl.oauthbearer.sub.claim.name = sub
+        sasl.oauthbearer.token.endpoint.url = null
+        security.protocol = PLAINTEXT
+        security.providers = null
+        send.buffer.bytes = 131072
+        socket.connection.setup.timeout.max.ms = 30000
+        socket.connection.setup.timeout.ms = 10000
+        ssl.cipher.suites = null
+        ssl.enabled.protocols = [TLSv1.2, TLSv1.3]
+        ssl.endpoint.identification.algorithm = https
+        ssl.engine.factory.class = null
+        ssl.key.password = null
+        ssl.keymanager.algorithm = SunX509
+        ssl.keystore.certificate.chain = null
+        ssl.keystore.key = null
+        ssl.keystore.location = null
+        ssl.keystore.password = null
+        ssl.keystore.type = JKS
+        ssl.protocol = TLSv1.3
+        ssl.provider = null
+        ssl.secure.random.implementation = null
+        ssl.trustmanager.algorithm = PKIX
+        ssl.truststore.certificates = null
+        ssl.truststore.location = null
+        ssl.truststore.password = null
+        ssl.truststore.type = JKS
+        transaction.timeout.ms = 60000
+        transactional.id = null
+        value.serializer = class org.apache.kafka.common.serialization.StringSerializer
+
+2025-09-09T21:09:40.352Z  INFO 1 --- [nio-8082-exec-8] o.a.k.clients.producer.KafkaProducer     : [Producer clientId=producer-1] Instantiated an idempotent producer.
+2025-09-09T21:09:40.451Z  INFO 1 --- [nio-8082-exec-8] o.a.kafka.common.utils.AppInfoParser     : Kafka version: 3.6.0
+2025-09-09T21:09:40.451Z  INFO 1 --- [nio-8082-exec-8] o.a.kafka.common.utils.AppInfoParser     : Kafka commitId: 60e845626d8a465a
+2025-09-09T21:09:40.451Z  INFO 1 --- [nio-8082-exec-8] o.a.kafka.common.utils.AppInfoParser     : Kafka startTimeMs: 1757452180451
+2025-09-09T21:09:40.673Z  WARN 1 --- [ad | producer-1] org.apache.kafka.clients.NetworkClient   : [Producer clientId=producer-1] Error while fetching metadata with correlation id 1 : {movies=LEADER_NOT_AVAILABLE}
+2025-09-09T21:09:40.673Z  INFO 1 --- [ad | producer-1] org.apache.kafka.clients.Metadata        : [Producer clientId=producer-1] Cluster ID: vDFefnxMTRmh2Uv0nxBMuQ
+2025-09-09T21:09:40.745Z  INFO 1 --- [ad | producer-1] o.a.k.c.p.internals.TransactionManager   : [Producer clientId=producer-1] ProducerId set to 0 with epoch 0
+2025-09-09T21:09:40.851Z  WARN 1 --- [ad | producer-1] org.apache.kafka.clients.NetworkClient   : [Producer clientId=producer-1] Error while fetching metadata with correlation id 4 : {movies=LEADER_NOT_AVAILABLE}
+2025-09-09T21:09:41.089Z  INFO 1 --- [io-8082-exec-10] c.cinemaabyss.events.EventsController    : Received user event: {user_id=4, username=testuser, action=logged_in, timestamp=2025-09-09T21:09:41.087Z}
+2025-09-09T21:09:41.106Z  WARN 1 --- [ad | producer-1] org.apache.kafka.clients.NetworkClient   : [Producer clientId=producer-1] Error while fetching metadata with correlation id 7 : {users=LEADER_NOT_AVAILABLE}
+2025-09-09T21:09:41.372Z  INFO 1 --- [nio-8082-exec-1] c.cinemaabyss.events.EventsController    : Received payment event: {payment_id=4, user_id=4, amount=9.99, status=completed, timestamp=2025-09-09T21:09:41.370Z, method_type=credit_card}
+2025-09-09T21:09:41.388Z  WARN 1 --- [ad | producer-1] org.apache.kafka.clients.NetworkClient   : [Producer clientId=producer-1] Error while fetching metadata with correlation id 10 : {payments=LEADER_NOT_AVAILABLE}
+2025-09-09T21:09:41.694Z  WARN 1 --- [ad | producer-1] org.apache.kafka.clients.NetworkClient   : [Producer clientId=producer-1] Error while fetching metadata with correlation id 11 : {payments=LEADER_NOT_AVAILABLE}

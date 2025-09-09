@@ -1,3 +1,4 @@
+version: '3.8'
 
 services:
   # PostgreSQL Database
@@ -81,27 +82,26 @@ services:
     networks:
       - cinemaabyss-network
 
- # Events Microservice
-events-service:
-  build:
-    context: ./src/microservices/events
-    dockerfile: Dockerfile
-    args:
-      - platform=linux/amd64
-  container_name: cinemaabyss-events-service
-  ports:
-    - "8082:8082"
-  environment:
-    PORT: 8082
-    KAFKA_BROKERS: kafka:9092  
-    SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/cinemaabyss
-    SPRING_DATASOURCE_USERNAME: postgres
-    SPRING_DATASOURCE_PASSWORD: postgres_password
-  depends_on:
-    - postgres
-    - kafka
-  networks:
-    - cinemaabyss-network
+  # Events Microservice
+  events-service:
+    build:
+      context: ./src/microservices/events
+      dockerfile: Dockerfile
+    container_name: cinemaabyss-events-service
+    ports:
+      - "8082:8082"
+    environment:
+      PORT: 8082
+      KAFKA_BROKERS: kafka:9092
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/cinemaabyss
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: postgres_password
+    depends_on:
+      - postgres
+      - kafka
+    networks:
+      - cinemaabyss-network
+
   # Proxy Service (API Gateway)
   proxy-service:
     build:
@@ -111,14 +111,14 @@ events-service:
     depends_on:
       - monolith
       - movies-service
-      - events
+      - events-service  # ← Исправлено: events-service вместо events
     ports:
       - "8000:8000"
     environment:
       PORT: 8000
       MONOLITH_URL: http://monolith:8080
       MOVIES_SERVICE_URL: http://movies-service:8081
-      EVENTS_SERVICE_URL: http://events:8082
+      EVENTS_SERVICE_URL: http://events-service:8082  # ← Исправлено: events-service вместо events
       GRADUAL_MIGRATION: "true"
       MOVIES_MIGRATION_PERCENT: "50"
     networks:

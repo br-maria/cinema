@@ -33,7 +33,7 @@ database:
 monolith:
   enabled: true
   image:
-    repository: ghcr.io/db-exp/cinemaabysstest/monolith
+    repository: ghcr.io/br-maria/cinema/monolith
     tag: latest
     pullPolicy: Always
   replicas: 1
@@ -48,12 +48,27 @@ monolith:
     port: 8080
     targetPort: 8080
     type: ClusterIP
+  # ДОБАВЛЕНО: Переменные окружения для monolith
+  environment:
+    - name: DB_HOST
+      value: "postgres"
+    - name: DB_PORT
+      value: "5432"
+    - name: DB_NAME
+      value: "cinemaabyss"
+    - name: DB_USER
+      value: "postgres"
+    - name: DB_PASSWORD
+      valueFrom:
+        secretKeyRef:
+          name: cinemaabyss-secrets
+          key: DB_PASSWORD
 
 # Proxy service configuration
 proxyService:
   enabled: true
   image:
-    repository: ghcr.io/db-exp/cinemaabysstest/proxy-service
+    repository: ghcr.io/br-maria/cinema/proxy-service
     tag: latest
     pullPolicy: Always
   replicas: 1
@@ -73,7 +88,7 @@ proxyService:
 moviesService:
   enabled: true
   image:
-    repository: ghcr.io/db-exp/cinemaabysstest/movies-service
+    repository: ghcr.io/br-maria/cinema/movies-service
     tag: latest
     pullPolicy: Always
   replicas: 1
@@ -88,12 +103,29 @@ moviesService:
     port: 8081
     targetPort: 8081
     type: ClusterIP
+  # ДОБАВЛЕНО: Переменные окружения для movies-service
+  environment:
+    - name: SPRING_DATASOURCE_URL
+      value: "jdbc:postgresql://postgres:5432/cinemaabyss"
+    - name: SPRING_DATASOURCE_USERNAME
+      value: "postgres"
+    - name: SPRING_DATASOURCE_PASSWORD
+      valueFrom:
+        secretKeyRef:
+          name: cinemaabyss-secrets
+          key: DB_PASSWORD
+    - name: SPRING_DATASOURCE_DRIVER_CLASS_NAME
+      value: "org.postgresql.Driver"
+    - name: SPRING_JPA_HIBERNATE_DDL_AUTO
+      value: "update"
+    - name: SPRING_JPA_PROPERTIES_HIBERNATE_DIALECT
+      value: "org.hibernate.dialect.PostgreSQLDialect"
 
 # Events service configuration
 eventsService:
   enabled: true
   image:
-    repository: ghcr.io/db-exp/cinemaabysstest/events-service
+    repository: ghcr.io/br-maria/cinema/events-service
     tag: latest
     pullPolicy: Always
   replicas: 1
@@ -108,6 +140,23 @@ eventsService:
     port: 8082
     targetPort: 8082
     type: ClusterIP
+  # ДОБАВЛЕНО: Переменные окружения для events-service
+  environment:
+    - name: SPRING_DATASOURCE_URL
+      value: "jdbc:postgresql://postgres:5432/cinemaabyss"
+    - name: SPRING_DATASOURCE_USERNAME
+      value: "postgres"
+    - name: SPRING_DATASOURCE_PASSWORD
+      valueFrom:
+        secretKeyRef:
+          name: cinemaabyss-secrets
+          key: DB_PASSWORD
+    - name: SPRING_DATASOURCE_DRIVER_CLASS_NAME
+      value: "org.postgresql.Driver"
+    - name: SPRING_JPA_HIBERNATE_DDL_AUTO
+      value: "update"
+    - name: SPRING_JPA_PROPERTIES_HIBERNATE_DIALECT
+      value: "org.hibernate.dialect.PostgreSQLDialect"
 
 # Kafka configuration
 kafka:

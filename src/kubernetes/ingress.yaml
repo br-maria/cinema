@@ -4,19 +4,34 @@ metadata:
   name: cinemaabyss-ingress
   namespace: cinemaabyss
   annotations:
-    kubernetes.io/ingress.class: "nginx"
     nginx.ingress.kubernetes.io/ssl-redirect: "false"
+    nginx.ingress.kubernetes.io/proxy-body-size: "10m"
 spec:
+  ingressClassName: nginx
   rules:
     - host: cinemaabyss.example.com
       http:
         paths:
-          #дополните конфигурацию для /
-          ...
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: monolith           # Используем существующий сервис
+                port:
+                  number: 8080           # Правильный порт
+
+          - path: /api/movies
+            pathType: Prefix
+            backend:
+              service:
+                name: movies-service     # Используем существующий сервис
+                port:
+                  number: 8081           # Правильный порт
+
           - path: /api/events
             pathType: Prefix
             backend:
               service:
-                name: events-service
+                name: events-service     # Используем существующий сервис
                 port:
-                  number: 8082
+                  number: 8082           # Правильный порт

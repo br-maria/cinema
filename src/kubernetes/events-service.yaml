@@ -1,0 +1,90 @@
+{{- if .Values.eventsService.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: events-service
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    app: events-service
+    app.kubernetes.io/name: {{ include "cinemaabyss.name" . }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+spec:
+  replicas: {{ .Values.eventsService.replicas }}
+  selector:
+    matchLabels:
+      app: events-service
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  template:
+    metadata:
+      labels:
+        app: events-service
+    spec:
+      containers:
+        - name: events-service
+          image: {{ .Values.eventsService.image.repository }}:{{ .Values.eventsService.image.tag }}
+          imagePullPolicy: {{ .Values.eventsService.image.pullPolicy }}
+          ports:
+            - containerPort: {{ .Values.eventsService.service.targetPort }}
+          env:
+            - name: PORT
+              value: "{{ .Values.eventsService.service.targetPort }}"
+            # ЗАМЕНА: Правильные Spring Boot переменные вместо DB_CONNECTION_STRING
+            - name: SPRING_DATASOURCE_URL
+              value: "jdbc:postgresql://{{ .Values.database.host }}:{{ .Values.database.port }}/{{ .Values.database.name }}"
+            - name: SPRING_DATASOURCE_USERNAME
+              value: "{{ .Values.database.user }}"
+            - name: SPRING_DATASOURCE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: cinemaabyss-secrets
+                  key: DB_PASSWORD
+            - name: SPRING_DATASOURCE_DRIVER_CLASS_NAME
+              value: "org.postgresql.Driver"
+            - name: SPRING_JPA_HIBERNATE_DDL_AUTO
+              value: "update"
+            - name: SPRING_JPA_PROPERTIES_HIBERNATE_DIALECT
+              value: "org.hibernate.dialect.PostgreSQLDialect"
+          envFrom:
+            - configMapRef:
+                name: cinemaabyss-config
+            - secretRef:
+                name: cinemaabyss-secrets
+          resources:
+            {{- toYaml .Values.eventsService.resources | nindent 12 }}
+          readinessProbe:
+            httpGet:
+              path: /api/events/health
+              port: {{ .Values.eventsService.service.targetPort }}
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /api/events/health
+              port: {{ .Values.eventsService.service.targetPort }}
+            initialDelaySeconds: 15
+            periodSeconds: 20
+      restartPolicy: Always
+      imagePullSecrets:
+        - name: dockerconfigjson
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: events-service
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    app: events-service
+    app.kubernetes.io/name: {{ include "cinemaabyss.name" . }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+spec:
+  selector:
+    app: events-service
+  ports:
+    - port: {{ .Values.eventsService.service.port }}
+      targetPort: {{ .Values.eventsService.service.targetPort }}
+  type: {{ .Values.eventsService.service.type }}
+  {{- end }}
